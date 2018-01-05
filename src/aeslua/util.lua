@@ -96,7 +96,66 @@ function public.toHexString(data)
     end
 end
 
-function public.padByteString(data)
+local paddings = {
+	pkcs5={},
+	pkcs7={},
+	ansix923={},
+	iso10126={},
+	--zero={},
+	
+	bighil={} -- Hilbig - mhilbig@gmail.com
+}
+function paddings.pkcs5.pad(data, blockSize)
+	assert(data)
+	blockSize = blockSize or (aeslua and aeslua.AES128) or 16
+	local nPaddingBytes = blockSize - (#data % blockSize)
+	local padding = "";
+    for i=1,nPaddingBytes do
+        padding = padding .. string.char(nPaddingBytes);
+    end 
+	return data .. padding
+end
+function paddings.pkcs5.unpad(data)
+	assert(data)
+	local nPaddingBytes = string.sub(data, -1)
+	if nPaddingBytes then
+		nPaddingBytes = string.byte(nPaddingBytes)
+		if nPaddingBytes >= 1 and nPaddingBytes < #data then
+			return data:sub(1, -1-nPaddingBytes)
+		end
+	end
+	return data
+end
+
+paddings.pkcs7 = paddings.pkcs5
+
+function paddings.ansix923.pad(data, blockSize)
+	assert(data)
+	blockSize = blockSize or (aeslua and aeslua.AES128) or 16
+	local nPaddingBytes = blockSize - (#data % blockSize)
+	local padding = "";
+    for i=1,nPaddingBytes-1 do
+        padding = padding .. string.char(0);
+    end 
+    padding = padding .. string.char(nPaddingBytes);
+	return data .. padding
+end
+paddings.ansix923.unpad = paddings.pkcs5.unpad
+
+function paddings.iso10126.pad(data, blockSize)
+	assert(data)
+	blockSize = blockSize or (aeslua and aeslua.AES128) or 16
+	local nPaddingBytes = blockSize - (#data % blockSize)
+	local padding = "";
+    for i=1,nPaddingBytes-1 do
+        padding = padding .. string.char(math.random(0,255));
+    end 
+    padding = padding .. string.char(nPaddingBytes);
+	return data .. padding
+end
+paddings.iso10126.unpad = paddings.pkcs5.unpad
+
+function paddings.bighil.pad(data)
     local dataLength = #data;
     
     local random1 = math.random(0,255);
@@ -122,18 +181,18 @@ function public.padByteString(data)
     return data .. padding;
 end
 
-function private.properlyDecrypted(data)
-    local random = {string.byte(data,1,4)};
+function paddings.bighil.unpad(data)
+	local function properlyDecrypted(data)
+		local random = {string.byte(data,1,4)};
 
-    if (random[1] == random[3] and random[2] == random[4]) then
-        return true;
-    end
-    
-    return false;
-end
+		if (random[1] == random[3] and random[2] == random[4]) then
+			return true;
+		end
+		
+		return false;
+	end
 
-function public.unpadByteString(data)
-    if (not private.properlyDecrypted(data)) then
+    if (not properlyDecrypted(data)) then
         return nil;
     end
 
@@ -143,6 +202,16 @@ function public.unpadByteString(data)
                      + public.putByte(string.byte(data,8), 0);
     
     return string.sub(data,9,8+dataLength);
+end
+
+public.paddings = paddings
+public.padding = paddings.pkcs5
+function public.padByteString(data)
+	return public.padding.pad(data)
+end
+
+function public.unpadByteString(data)
+	return public.padding.unpad(data)
 end
 
 function public.xorIV(data, iv)

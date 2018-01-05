@@ -51,7 +51,7 @@ end
 --
 -- mode and keyLength must be the same for encryption and decryption.
 --
-function public.encrypt(password, data, keyLength, mode)
+function public.encrypt(password, data, keyLength, mode, iv)
 	assert(password ~= nil, "Empty password.");
 	assert(password ~= nil, "Empty data.");
 	 
@@ -63,13 +63,13 @@ function public.encrypt(password, data, keyLength, mode)
     local paddedData = util.padByteString(data);
     
     if (mode == public.ECBMODE) then
-        return ciphermode.encryptString(key, paddedData, ciphermode.encryptECB);
+        return ciphermode.encryptString(key, paddedData, ciphermode.encryptECB, iv);
     elseif (mode == public.CBCMODE) then
-        return ciphermode.encryptString(key, paddedData, ciphermode.encryptCBC);
+        return ciphermode.encryptString(key, paddedData, ciphermode.encryptCBC, iv);
     elseif (mode == public.OFBMODE) then
-        return ciphermode.encryptString(key, paddedData, ciphermode.encryptOFB);
+        return ciphermode.encryptString(key, paddedData, ciphermode.encryptOFB, iv);
     elseif (mode == public.CFBMODE) then
-        return ciphermode.encryptString(key, paddedData, ciphermode.encryptCFB);
+        return ciphermode.encryptString(key, paddedData, ciphermode.encryptCFB, iv);
     else
         return nil;
     end
@@ -87,7 +87,7 @@ end
 --
 -- mode and keyLength must be the same for encryption and decryption.
 --
-function public.decrypt(password, data, keyLength, mode)
+function public.decrypt(password, data, keyLength, mode, iv)
     local mode = mode or public.CBCMODE;
     local keyLength = keyLength or public.AES128;
 
@@ -95,13 +95,13 @@ function public.decrypt(password, data, keyLength, mode)
     
     local plain;
     if (mode == public.ECBMODE) then
-        plain = ciphermode.decryptString(key, data, ciphermode.decryptECB);
+        plain = ciphermode.decryptString(key, data, ciphermode.decryptECB, iv);
     elseif (mode == public.CBCMODE) then
-        plain = ciphermode.decryptString(key, data, ciphermode.decryptCBC);
+        plain = ciphermode.decryptString(key, data, ciphermode.decryptCBC, iv);
     elseif (mode == public.OFBMODE) then
-        plain = ciphermode.decryptString(key, data, ciphermode.decryptOFB);
+        plain = ciphermode.decryptString(key, data, ciphermode.decryptOFB, iv);
     elseif (mode == public.CFBMODE) then
-        plain = ciphermode.decryptString(key, data, ciphermode.decryptCFB);
+        plain = ciphermode.decryptString(key, data, ciphermode.decryptCFB, iv);
     end
     
     result = util.unpadByteString(plain);
@@ -112,3 +112,5 @@ function public.decrypt(password, data, keyLength, mode)
     
     return result;
 end
+
+return public
